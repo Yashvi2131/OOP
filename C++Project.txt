@@ -1,0 +1,275 @@
+#include <iostream>
+#include <cstring>
+
+using namespace std;
+const int MAX_BOOKS = 100;
+const int MAX_MEMBERS = 100;
+
+// Book class
+class Book {
+private:
+    char title[100];
+    char author[100];
+    char ISBN[20];
+    bool available;
+
+public:
+    Book(const char* t, const char* a, const char* isbn)
+        : available(true) {
+        strncpy(title, t, sizeof(title) - 1);
+        strncpy(author, a, sizeof(author) - 1);
+        strncpy(ISBN, isbn, sizeof(ISBN) - 1);
+        title[sizeof(title) - 1] = '\0'; // checking null-termination
+        author[sizeof(author) - 1] = '\0'; 
+        ISBN[sizeof(ISBN) - 1] = '\0'; 
+    }
+
+    void displayDetails() {
+        cout << "Title: " << title << endl;
+        cout << "Author: " << author << endl;
+        cout << "ISBN: " << ISBN << endl;
+        cout << "Status: " << (available ? "Available" : "Not Available") << endl;
+    }
+
+    bool isAvailable() {
+        return available;
+    }
+
+    void updateAvailability(bool status) {
+        available = status;
+    }
+
+    const char* getISBN() const {
+        return ISBN;
+    }
+};
+
+// Member class
+class Member {
+private:
+    char name[100];
+    int ID;
+    Book* borrowedBooks[3]; // Assuming a member can borrow up to 3 books
+
+public:
+    Member(const char* n, int id)
+        : ID(id) {
+        strncpy(name, n, sizeof(name) - 1);
+        name[sizeof(name) - 1] = '\0'; // Ensure null-termination
+        for (int i = 0; i < 3; ++i) {
+            borrowedBooks[i] = nullptr;
+        }
+    }
+
+    int getID() const {
+        return ID;
+    }
+
+    void displayDetails() {
+        cout << "Name: " << name << endl;
+        cout << "ID: " << ID << endl;
+        cout << "Books Borrowed:" << endl;
+        bool hasBorrowedBooks = false;
+        for (int i = 0; i < 3; ++i) {
+            if (borrowedBooks[i] != nullptr) {
+                cout << "- " << borrowedBooks[i]->getISBN() << ": " << (borrowedBooks[i]->isAvailable() ? "Available" : "Not Available") << endl;
+                hasBorrowedBooks = true;
+            }
+        }
+        if (!hasBorrowedBooks) {
+            cout << "None" << endl;
+        }
+    }
+
+    bool borrowBook(Book* book) {
+        for (int i = 0; i < 3; ++i) {
+            if (borrowedBooks[i] == nullptr) {
+                borrowedBooks[i] = book;
+                return true;
+            }
+        }
+        return false; // Couldn't borrow because all slots are full
+    }
+
+    bool returnBook(const char* ISBN) {
+        for (int i = 0; i < 3; ++i) {
+            if (borrowedBooks[i] != nullptr && strcmp(borrowedBooks[i]->getISBN(), ISBN) == 0) {
+                borrowedBooks[i]->updateAvailability(true);
+                borrowedBooks[i] = nullptr;
+                return true;
+            }
+        }
+        return false; // Book with given ISBN not found in borrowed books
+    }
+};
+
+
+// Library class
+class Library {
+private:
+    Book* books[MAX_BOOKS];
+    Member* members[MAX_MEMBERS];
+    int numBooks;
+    int numMembers;
+
+public:
+    Library()
+        : numBooks(0), numMembers(0) {}
+
+    void addBook(Book* book) {
+        if (numBooks < MAX_BOOKS) {
+            books[numBooks++] = book;
+        } else {
+            cout << "Library is full. Cannot add more books." << endl;
+        }
+    }
+
+    void removeBook(const char* ISBN) {
+        for (int i = 0; i < numBooks; ++i) {
+            if (strcmp(books[i]->getISBN(), ISBN) == 0) {
+                // Shift books to fill the gap
+                delete books[i]; // Free memory
+                for (int j = i; j < numBooks - 1; ++j) {
+                    books[j] = books[j + 1];
+                }
+                --numBooks;
+                cout << "Book removed successfully." << endl;
+                return;
+            }
+        }
+        cout << "Book not found." << endl;
+    }
+
+    void displayAllBooks() {
+        cout << "Listing all books:" << endl;
+        for (int i = 0; i < numBooks; ++i) {
+            books[i]->displayDetails();
+            cout << endl;
+        }
+    }
+
+    void addMember(Member* member) {
+        if (numMembers < MAX_MEMBERS) {
+            members[numMembers++] = member;
+        } else {
+            cout << "Library membership limit reached. Cannot add more members." << endl;
+        }
+    }
+
+    void removeMember(int ID) {
+        for (int i = 0; i < numMembers; ++i) {
+            if (members[i]->getID() == ID) {
+                // Shift members to fill the gap
+                delete members[i]; // Free memory
+                for (int j = i; j < numMembers - 1; ++j) {
+                    members[j] = members[j + 1];
+                }
+                --numMembers;
+                cout << "Member removed successfully." << endl;
+                return;
+            }
+        }
+        cout << "Member not found." << endl;
+    }
+
+    void displayAllMembers() {
+        cout << "Listing all members:" << endl;
+        for (int i = 0; i < numMembers; ++i) {
+            members[i]->displayDetails();
+            cout << endl;
+        }
+    }
+
+    Book* findBookByISBN(const char* ISBN) {
+        for (int i = 0; i < numBooks; ++i) {
+            if (strcmp(books[i]->getISBN(), ISBN) == 0) {
+                return books[i];
+            }
+        }
+        return nullptr; // Book not found
+    }
+
+    Member* findMemberByID(int ID) {
+        for (int i = 0; i < numMembers; ++i) {
+            if (members[i]->getID() == ID) {
+                return members[i];
+            }
+        }
+        return nullptr; // Member not found
+    }
+
+    bool issueBook(const char* ISBN, int memberID) {
+        Book* book = findBookByISBN(ISBN);
+        if (book == nullptr) {
+            cout << "Book not found." << endl;
+            return false;
+        }
+
+        Member* member = findMemberByID(memberID);
+        if (member == nullptr) {
+            cout << "Member not found." << endl;
+            return false;
+        }
+
+        if (!book->isAvailable()) {
+            cout << "Book is not available for issue." << endl;
+            return false;
+        }
+
+        if (!member->borrowBook(book)) {
+            cout << "Member cannot borrow more books." << endl;
+            return false;
+        }
+
+        book->updateAvailability(false);
+        cout << "Book issued successfully." << endl;
+        return true;
+    }
+
+    bool returnBook(const char* ISBN, int memberID) {
+        Member* member = findMemberByID(memberID);
+        if (member == nullptr) {
+            cout << "Member not found." << endl;
+            return false;
+        }
+
+        if (!member->returnBook(ISBN)) {
+            cout << "Book with ISBN " << ISBN << " not found in member's borrowed books." << endl;
+            return false;
+        }
+
+        Book* book = findBookByISBN(ISBN);
+        if (book == nullptr) {
+            cout << "Book not found." << endl;
+            return false;
+        }
+
+        book->updateAvailability(true);
+        cout << "Book returned successfully." << endl;
+        return true;
+    }
+};
+
+int main() {
+    cout<<"             WELCOME TO LIBRARY MANAGEMENT SYSTEM !!       "<<endl;
+    Library library;
+
+    // Adding some books
+    library.addBook(new Book("The Catcher in the Rye", "J.D. Salinger", "9780316769488"));
+    library.addBook(new Book("To Kill a Mockingbird", "Harper Lee", "9780061120084"));
+    library.addBook(new Book("1984", "George Orwell", "9780451524935"));
+
+    // Adding some members
+    library.addMember(new Member("Alice", 1001));
+    library.addMember(new Member("Bob", 1002));
+
+    // Issue and return example
+    library.issueBook("9780316769488", 1001); // Alice borrows "The Catcher in the Rye"
+
+    // Displaying all books and members
+    library.displayAllBooks();
+    cout << endl;
+    library.displayAllMembers();
+
+    return 0;
+}
